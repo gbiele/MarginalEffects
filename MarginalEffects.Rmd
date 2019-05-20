@@ -1,0 +1,153 @@
+---
+title: "Marginal effects"
+author: "Guido Biele"
+date: "20 mai 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+The general linear model and in particular linear and logistic regressions are the workhorse of much epidemiological or health research. Results from the such analyses are often presented in terms of p-values (and statements about statistical significance) and different types of effect sizes. This is problematic, because the meaning of p-values and effect sizes measures like odds rations is often not intuitive, and the presence of interaction or non-linear terms make it difficult to evaluate the effect of a variable. As a result, it can be difficult for researchers, clinicians, and policy makers to evaluate the practical significance of a finding.
+
+A statistic that is easy to understand is one that tells the reader by how much the outcome value changes if the exposure value is changes by one unit. For example, the statement "for each additional year of education life expectancy increases by 0.02 years (1 week)", which is a statement about marginal effects, is more informative than "the association between years of education and life expectancy is significant (p = 0.000001)". Yet, both statements can describe the same data:
+
+```{r}
+N = 50000
+Edu = rnorm(N,mean = 10, sd = 1)
+LifeExpect = 70 + (1/52)*Edu + rnorm(N)
+summary(lm(Edu~LifeExpect))
+```
+
+The example above shows (implicitly) that for linear regressions marginal effects can be read directly from regression coefficients, provided that exposure and outcome were measured on an intuitive scale. Things are not that easy if the regression model employed a non-linear link-function, as is the case for logistic regressions or model for count data (e.g. Poisson regression). For such regression analyses marginal effects are calculated as the average difference in the outcome values for a one unit change in the exposure, while all additional covariates are held constant.
+
+Let's make this more explicit with an example, where we look at the effect of gender on the probability to receive an ADHD diagnosis:
+
+```{r}
+library(boot)
+N = 1000
+my_data = data.frame(
+  MaternalEdu = rnorm(N, mean = 10, sd = 1),
+  GenderGirl = (runif(N) > runif(N))*1,
+  Birthmonth = sample(1:12,N, replace = T),
+  parity = rpois(N,.75),
+  PaternalAgez = rnorm(N))
+
+logit_ADHD = with(my_data,
+                  - 4.5 
+                  - 1    * GenderGirl
+                  +  .5  * Birthmonth 
+                  -  .25 * MaternalEdu 
+                  +  .3  * parity 
+                  + 1    * PaternalAgez)
+my_data$GenderGirl = factor(my_data$GenderGirl)
+my_data$ADHD = inv.logit(logit_ADHD) > runif(N)
+
+logreg_fit = glm(ADHD ~ GenderGirl + Birthmonth + PaternalAgez + MaternalEdu + parity,
+                 family = binomial,
+                 data = my_data)
+
+summary(logreg_fit)
+```
+
+Now we have simulated data and calculated a logistic regression. We can see that the coefficient for `GenderGirl` is `r coef(logreg_fit)["GenderGirl"]`. Because this is a logistic regression, this is the log of the odds ratio, so by doing `exp(coef(logreg_fit)["GenderGirl"])` we can calculate the odds ratio, which is `r exp(coef(logreg_fit)["GenderGirl"])`. What does this mean? We can say correctly that this is the ratio of the odds to get a diagnosis when one is a girl to the odds to get a diagnosis if one is not a girl:
+
+$\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$.
+
+In itself this number is not very elucidating, but when the prevalence of our outcome is low (< 5%) the odds ration approximates the risk ratio. So we could say the risk that a girls gets an ADHD diagnosis is `r round(exp(coef(logreg_fit)["GenderGirl"]),digits = 2)` times that of boys. Now we approaching the territory of intuitively understandable numbers. Still, one can argue the a simple risk difference is even more understandable, which leads to to average marginal effects.
+
+Lets start by simply calculating the observed and predicted probability of ADHD:
+
+```{r}
+observed_probability = mean(my_data$ADHD)
+predicted_probability = mean(predict(logreg_fit,
+                                     type = "response"))
+c(observed_probability,predicted_probability)
+```
+
+Note the usage of the `predict` function. Calculating average marginal effects boils down to generating predictions like that, while fixing the predictors to specific values. To calculate the marginal effect, we simply compare the prediction from the regression model when the dummy variable `GenderGirl` is set to 1 or 0, respectively:
+
+```{r}
+my_data_girl0 = my_data
+my_data_girl0$GenderGirl = "0"
+my_data_girl1 = my_data
+my_data_girl1$GenderGirl = "1"
+
+predicted_probability_girl0 = 
+  predict(logreg_fit,
+               type = "response",
+               newdata = my_data_girl0)
+
+predicted_probability_girl1 = 
+  predict(logreg_fit,
+               type = "response",
+               newdata = my_data_girl1)
+
+marginal_effect = 
+  mean(predicted_probability_girl1 - predicted_probability_girl0)
+
+round(
+c(predicted_probability = predicted_probability,
+  predicted_probability_girl0 = mean(predicted_probability_girl0),
+  predicted_probability_girl1 = mean(predicted_probability_girl1),
+  marginal_effect = marginal_effect),
+digits = 3)
+```
+
+With these numbers in hand, we can make a table with the different effect size measures:
+
+```{r, echo = F}
+OR = c("Odds Ratio",
+       "$\\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$",
+       as.character(round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)))
+RR = c("Risk Ratio",
+       "$\\frac{p(ADHD|girl)}{p(ADHD|boy)}$",
+       as.character(round(mean(predicted_probability_girl1/
+                                 predicted_probability_girl0),
+                          digits = 2)))
+AME = c("Average marginal effect (Risk difference)",
+        "$p(ADHD|girl)-p(ADHD|boy)$",
+        as.character(round(mean(predicted_probability_girl1-
+                                  predicted_probability_girl0),
+                           digits = 2)))
+
+tbl = rbind(OR,RR,AME)
+colnames(tbl) = c("Name","Equation","Value")
+kable(tbl)
+```
+
+Note that the deviation between OR and RR is expected here, because the prevalence of the outcome is above 5%.
+
+
+## R packages for calculating marginal effects
+The example above was nice to explain how marginal effects can be calculated, and how they relate to other effect size measures. However, it is a bit cumbersome to calculate marginal effects manually (and we haven't calculated any confidence intervals). R packages for calculating marginal effects include
+
+* [margins](https://cran.r-project.org/web/packages/margins/)  
+* [ggeffects](https://cran.r-project.org/web/packages/ggeffects/index.html)
+
+The `margins` package re-implements (some of the) Stata functionalities to calculate marginal effects for R, but is relatively limited in the number of models for which one can calculate marginal effects. The `ggefects` package supports a wider range of models, but does not guarantee consistency with Stata software.
+
+### The margins package
+Calculating marginal effects with this package is easy.
+```{r}
+library(margins)
+me = margins(logreg_fit)
+me
+```
+By default, `margins` calculates marginal effects for all predictors. With the `summary` and `plot` methods, one see standard errors and confidence intervals as well as plot the results.
+
+```{r}
+summary(me)
+plot(me)
+```
+
+Marginal effects are most intuitive, if we see them on the same scale on which the outcome varies. This can be done with the `cplot` function, which shows predicted value across levels of the exposure of interest:
+
+```{r}
+tmp = cplot(logreg_fit,"GenderGirl")
+tmp = cplot(logreg_fit,"PaternalAgez")
+```
+
