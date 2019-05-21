@@ -1,6 +1,6 @@
 # MarginalEffects
 
-This is a markdown document about about calculating marginal effects i R.
+This is a markdown document about about calculating marginal effects in R.
 
 Topics covered are
 

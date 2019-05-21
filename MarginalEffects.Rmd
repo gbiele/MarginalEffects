@@ -250,3 +250,11 @@ The average marginal effect (AME) we have discussed so far is one of several mar
 * Average marginal effects (AMEs)
 
 Of these, AMEs are preferred, because MERs is mostly useful in instances in which we want to explore effects under certain scenarios, and MEMs calculate effects for a hypothetical case that is unlikely to ever exist.
+
+
+## Summary
+
+* the average marginal effect (AME) is the expected change of the outcome variable for a one unit change of the predictor variable
+* for a simple linear regression without interaction or non-linear terms, the AME is equivalent with the regression coefficient
+* the R package `margins` makes calculating AME for a number of regression models easy
+* AMEs can only be interpreted as causal effects, if causal indentification was achieved through experimental design, or control of confounding and selection effects in the analysis step (which is not optimal because it always rests on some untestable assumptions).
