@@ -101,7 +101,7 @@ average_marginal_effect =
 average_marginal_effect
 ```
 
-AMEs become most informative in the context of related statistics.
+AMEs become most informative in the context of related statistics. In particular, if an AME is large compared to the over all prevalence, this speaks to the importance of the focal variable. More generally, subject matter expertise provides the best basis for determining which effect sizes are large? ^[an effect size of Cohens d = 0.1 is small for psychological effects, but if we would find a simple and cheap intervention that reduces the avereg BMI of the population by 0.1 sd, this would be a hughe effect]
 
 ```{r, echo = F}
 tbl = data.frame(
@@ -174,7 +174,7 @@ tmp = cplot(logreg_fit,"PaternalAgez")
 To estimate these more complex effects we are coming back to the life expectancy example. First we simulate some data with nonlinear and interaction effects and estimate a linear regression:
 
 ```{r, fig.width=8}
-N = 2500
+N = 1000
 LE_data = data.frame(
   Edu = rnorm(N,mean = 10, sd = 1),
   GenderWoman = (runif(N) > runif(N))*1)
