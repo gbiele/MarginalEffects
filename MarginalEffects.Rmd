@@ -9,28 +9,30 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = F)
 ```
 
 ## Prelude about "effects"
 This short document is about marginal _effects_. While the word effect implies causal thinking, it is important to note that marginal effects are calculated from regression models and their causal interpretation has the same limitations as a causal interpretation of regression coefficients. This means that to believe somewhat in a causal interpretation of marginal effects, we must have insured that the usual suspects like confounding, selection, and loss to follow up were controlled in design and/or analysis (preferably in the study design!). One particular unfortunate thing is that R packages for marginal effects return by default the marginal effects for all variables in a regression, even though control of bias can typically not be achieved simultaneously for all exposures of interest.
 
-Therefore, any analysis that calculates marginal effects should first insure causal identification for the exposures of interest, even if this step is not covered in this document. Further, only marginal effects for the focal exposure need should be calculated.
+_Therefore, any analysis that calculates marginal effects should first insure causal identification for the exposures of interest, even if this step is not covered in this document. Further, only marginal effects for the focal exposure need should be calculated._
 
 ## Introduction
-The general linear model and in particular linear and logistic regressions are the workhorse of much epidemiological or health research. Results from such analyses are often presented in terms of p-values (and statements about statistical significance) and regression coefficients. This is problematic, because the meaning of p-values and regression coefficients or effect sizes measures like log odds ratios is often not intuitive, and the presence of interaction or non-linear terms can make it difficult to evaluate the over all effect of a variable. As a result, it can be difficult for researchers, clinicians, and policy makers to evaluate the practical significance of a finding.
+The general linear model and in particular linear and logistic regressions are the workhorse of much epidemiological or health research. Results from such analyses are often presented in terms of p-values (statements about statistical significance) and regression coefficients. This is problematic, because the meaning of p-values and regression coefficients or effect sizes measures like log odds ratios is often not intuitive. Interaction or non-linear terms can also make it difficult to understand the over all effect of a variable. As a result, it can be difficult for researchers, clinicians, and policy makers to evaluate the practical significance of a finding.
 
-A statistic that is easy to understand is one that tells the reader by how much the outcome value changes if the exposure value is changed by one unit. For example, the statement "for each additional year of education life expectancy increases by 0.02 years (1 week)", which is a statement about marginal effects, is more informative than "the association between years of education and life expectancy is significant (p = 0.000001)". Yet, both statements can describe the same data, as the following example shows:
+A statistic that is easy to understand is one that tells the reader by how much the outcome value changes if the exposure value is changed by one unit. For example, the statement "for each additional year of education life expectancy increases by 0.02 years (1 week)", which is a statement about marginal effects, is more informative than "the association between years of education and life expectancy is significant (p = 0.00001)". Yet, both statements can describe the same data, as the following example shows:
 
 ```{r}
 set.seed(123)
-N = 10000
-Edu = rnorm(N,mean = 10, sd = 1)
-LifeExpect = 70 + (1/52)*Edu + rnorm(N)
+N = 50000
+Edu = rnorm(N,mean = 13, sd = 1)
+LifeExpect = 78 + (1/52)*Edu + rnorm(N,sd = 1)
 summary(lm(LifeExpect~Edu))
 ```
 
-The example above shows (implicitly) that for linear regressions without interaction or non-linear terms, marginal effects can be read directly from regression coefficients, provided that exposure and outcome were measured on an intuitive scale. Things are not that easy if the regression model employed a non-linear link-function, as is the case for logistic regressions or model for count data (e.g. Poisson regression). For such regression analyses marginal effects are calculated as the average difference in the outcome values for a one unit change in the exposure, while all additional covariates are fixed to specific values. ^[A more general definition is that the average marginal effect is the [partial derivative with respect to the exposure of interest](https://stats.stackexchange.com/tags/marginal-effect/info)]. 
+The example above shows (implicitly) that for linear regressions without interaction or non-linear terms, marginal effects can be read directly from regression coefficients.^[Interpretabilty is further if exposure and outcome were measured on an intuitive scale, e.g. years of education and weeks life expectancy instead of "educational levels" and "years of life expectancy"] 
+
+Things are not that easy if the regression model employed a non-linear link-function, as is the case for logistic regressions or model for count data (e.g. Poisson regression). For such regression analyses marginal effects are calculated as the average difference in the outcome values for a one unit change in the exposure, while all additional covariates are fixed to specific values. ^[A more general definition is that the average marginal effect is the [partial derivative with respect to the exposure of interest](https://stats.stackexchange.com/tags/marginal-effect/info)]. 
 
 Different types of marginal effects (more details below), differ with regards to the values to which the other covariates are fixed. To calculate _Average Marginal Effects_ (AMEs), typically regarded as the most valid type, all variables except the exposure of interest are fixed to their observed values. 
 
@@ -48,7 +50,7 @@ my_data = data.frame(
 
 logit_ADHD = with(
   my_data,
-  - 4.5 
+  - 6 
   - 1    * GenderGirl
   +  .75 * Birthmonth 
   -  .25 * MaternalEdu 
@@ -70,11 +72,14 @@ summary(logreg_fit)
 
 Now we have simulated data and calculated a logistic regression. We can see that the coefficient for `GenderGirl1` is `r round(coef(logreg_fit)["GenderGirl1"],digits = 2)`. Because this is a logistic regression, this is the log of the odds ratio, so by doing `exp(coef(logreg_fit)["GenderGirl1"])` we can calculate the odds ratio, which is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)`. What does this mean? We can say correctly that this is the ratio of the odds to get a diagnosis when one is a girl to the odds to get a diagnosis if one is not a girl:
 
-$\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$.
+$$ \large \frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}. $$
 
-In itself this number is not very elucidating, but when the prevalence of our outcome is low (< 5%) the odds ration approximates the risk ratio. So we could say the risk that a girls gets an ADHD diagnosis is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)` times that of boys. Now we approaching the territory of intuitively understandable numbers. Still, one can argue the a simple risk difference is even more understandable, which leads to to average marginal effects.
 
-Lets start by simply calculating the observed and predicted probability of ADHD:
+This number is not very elucidating, but when the prevalence of our outcome is low (< 5%) the _odds ratio_ approximates the _risk ratio_. So we could say the risk that a girls gets an ADHD diagnosis is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)` times that of boys. Now we approach the territory of intuitively understandable numbers. 
+
+Still, one can argue the a simple risk difference is even more understandable, which leads to to average marginal effects.
+
+Lets start by calculating the observed and predicted probability of ADHD:
 
 ```{r}
 observed_probability = mean(my_data$ADHD)
@@ -83,7 +88,10 @@ predicted_probability = mean(predict(logreg_fit,
 c(observed_probability,predicted_probability)
 ```
 
-Note the use of the `predict` function. Calculating average marginal effects boils down to generating predictions like that, while fixing the predictors to specific values. To calculate the marginal effect, we simply compare the prediction from the regression model when the dummy variable `GenderGirl` is set to 1 or 0, respectively:
+Note the use of the `predict` function. Calculating marginal effects boils down to generating predictions like that, while fixing the predictors to specific values. To calculate _average marginal effects_, we compare the prediction given the regression model and parameters as well as the observed covariates between two situations:
+
+* with the dummy variable `GenderGirl` is set to 1 and
+* with the dummy variable `GenderGirl` is set to 0.
 
 ```{r}
 my_data_girl0 = my_data
@@ -106,7 +114,7 @@ average_marginal_effect =
 average_marginal_effect
 ```
 
-AMEs become most informative in the context of related statistics. In particular, if an AME is large compared to the over all prevalence, this speaks to the importance of the focal variable. More generally, subject matter expertise provides the best basis for determining which effect sizes are large? ^[an effect size of Cohens d = 0.1 is small for psychological effects, but if we would find a simple and cheap intervention that reduces the avereg BMI of the population by 0.1 sd, this would be a hughe effect]
+AMEs become most informative in the context of related statistics. In particular, if an AME is large compared to the over all prevalence, this speaks to the importance of the focal variable. More generally, subject matter expertise provides the best basis for determining which effect sizes are practically or clinically significant?^[an effect size of Cohens d = 0.1 is small for psychological effects, but if we would find a simple and cheap intervention that reduces the avereg BMI of the population by 0.1 sd, this would be a hughe effect] Lets look at some statistics from our simulated data.
 
 ```{r, echo = F}
 tbl = data.frame(
@@ -124,16 +132,16 @@ With these numbers in hand, we can make a table with the different effect size m
 
 ```{r, echo = F}
 OR = c("Odds Ratio",
-       "$\\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$",
+       "$$\\large\\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$$",
        as.character(round(exp(coef(logreg_fit)["GenderGirl1"]),
                           digits = 3)))
 RR = c("Risk Ratio",
-       "$\\frac{p(ADHD|girl)}{p(ADHD|boy)}$",
+       "$$\\large\\frac{p(ADHD|girl)}{p(ADHD|boy)}$$",
        as.character(round(mean(predicted_probability_girl1/
                                  predicted_probability_girl0),
                           digits = 3)))
 AME = c("Average marginal effect (Risk difference)",
-        "$p(ADHD|girl)-p(ADHD|boy)$",
+        "$$\\large p(ADHD|girl)-p(ADHD|boy)$$",
         as.character(round(mean(predicted_probability_girl1-
                                   predicted_probability_girl0),
                            digits = 3)))
@@ -152,7 +160,7 @@ The example above was nice to explain how marginal effects can be calculated, an
 * [margins](https://cran.r-project.org/web/packages/margins/)  
 * [ggeffects](https://cran.r-project.org/web/packages/ggeffects/index.html)
 
-The `margins` package re-implements (some of the) Stata functionalities to calculate marginal effects for R, and can calculate marginal effects for example for `glm`, `glmer`, `betareg`, and `polr` models (for more info execute `?margins` in the R-Console). The `ggefects` package supports a wider range of models, but does not guarantee consistency with Stata software. As of writing this, I am not sure if the ggeffects package calculates average marginal effects as they are traditionally defined. So I won't cover it for now.
+The `margins` package implements functionalities to calculate marginal effects in R, and can calculate marginal effects for example for `glm`, `glmer`, `betareg`, and `polr` models (for more info execute `?margins` in the R-Console). The `ggefects` package supports a wider range of models, but ss of writing this, I am not sure if it calculates average marginal effects as they are traditionally defined. So I won't cover it for now.
 
 ### The margins package
 Calculating marginal effects with this package is easy.
@@ -165,16 +173,19 @@ By default, the function `margins` calculates _average marginal effects_ for all
 
 ```{r}
 summary(AME)
-plot(AME)
+plot(AME,
+     labels = summary(AME)$factor)
 ```
+
+Note that I had to specify the labels for the plot, because they were otherwise mixed.
 
 Marginal effects are most intuitive, if we see them on the same scale on which the outcome varies. This can be done with the `cplot` function, which shows predicted value across levels of the exposure of interest:
 
 ```{r, results="hide"}
-tmp = cplot(logreg_fit,"GenderGirl")
-tmp = cplot(logreg_fit,"PaternalAgez",
-            data = my_data[my_data$PaternalAgez < 3.1 &
-                           my_data$PaternalAgez > -3,])
+cplot(logreg_fit,"GenderGirl")
+cplot(logreg_fit,"PaternalAgez",
+      data = my_data[my_data$PaternalAgez < 3.1 &
+                       my_data$PaternalAgez > -3,])
 ```
 
 On these plots 
@@ -188,37 +199,40 @@ On these plots
 To estimate these more complex effects we are coming back to the life expectancy example. First we simulate some data with nonlinear and interaction effects and estimate a linear regression:
 
 ```{r, fig.width=8}
-N = 1000
+N = 500
 LE_data = data.frame(
-  Edu = rnorm(N,mean = 10, sd = 1),
+  Edu = rnorm(N,mean = 13, sd = 1),
   GenderWoman = (runif(N) > runif(N))*1)
 LE_data$LifeExpect = 
   with(LE_data,
-       73 
-       + 1.2    * Edu 
-       - 0.04 * Edu^2 
-       + 5    * GenderWoman 
-       - 0.1 * (GenderWoman*Edu) 
-       + rnorm(N,sd = 5))
+       65 
+       + 2.25  * Edu 
+       - 0.07 * Edu^2 
+       + 3    * GenderWoman 
+       - .2  * (GenderWoman*Edu) 
+       + rnorm(N,sd = 1))
 
 LE_data$GenderWoman = factor(LE_data$GenderWoman)
 
 par(mfrow = c(1,2))
-breaks = seq(min(LE_data$LifeExpect)-.1,max(LE_data$LifeExpect)+.1,length = 25)
-hist(LE_data[LE_data$GenderWoman == 1,"LifeExpect"],
-     breaks = breaks,
-     xlim = range(LE_data$LifeExpect),
-     col = adjustcolor("red",alpha = .5),
-     main = "",
-     xlab = "Life expectancy")
-hist(LE_data[LE_data$GenderWoman == 0,"LifeExpect"],
-     breaks = breaks,
-     col = adjustcolor("black",alpha = .5),
-     add = T)
-with(LE_data[sample(nrow(LE_data),500),],
-     plot(Edu,LifeExpect,
-          pch = 16,
-          col = GenderWoman))
+
+with(LE_data,{
+  breaks = seq(min(LifeExpect)-.1,max(LifeExpect)+.1,length = 25)
+  hist(LifeExpect[GenderWoman == 1],
+       breaks = breaks,
+       xlim = range(LifeExpect),
+       col = adjustcolor("red",alpha = .5),
+       main = "",
+       xlab = "Life expectancy")
+  hist(LifeExpect[GenderWoman == 0],
+       breaks = breaks,
+       col = adjustcolor("black",alpha = .5),
+       add = T)
+  s = sample(length(LifeExpect),500)
+  plot(Edu[s],LifeExpect[s],
+       pch = 16,
+       col = GenderWoman)
+})
 ```
 
 
@@ -245,7 +259,7 @@ tbl = cbind(data.frame(group = c("women","women","men","men")),
 kable(tbl, digits = 3)
 ```
 
-This tells us that on average, one more year of education is associated with a `52*tbl$AME[1]` = `r round(52*tbl$AME[1], digits = 2)` weeks longer life expectancy for women and a `r round(52*tbl$AME[3], digits = 2)` life expectancy for men. We can also visualize this by plotting the expected life expectancy for men and women:
+This tells us that on average, one more year of education is associated with a `52*tbl$AME[1]` = `r round(52*tbl$AME[1], digits = 2)` weeks longer life expectancy for women and a `r round(52*tbl$AME[3], digits = 2)` longer life expectancy for men. We can also visualize this by plotting the expected life expectancy for men and women:
 
 ```{r, results="hide"}
 cplot(lmfit,"Edu",
