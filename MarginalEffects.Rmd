@@ -208,8 +208,8 @@ LE_data$LifeExpect =
        65 
        + 2.25  * Edu 
        - 0.07 * Edu^2 
-       + 3    * GenderWoman 
-       - .2  * (GenderWoman*Edu) 
+       + 3.5    * GenderWoman 
+       - .225  * (GenderWoman*Edu) 
        + rnorm(N,sd = 1))
 
 LE_data$GenderWoman = factor(LE_data$GenderWoman)
