@@ -12,7 +12,7 @@ library(knitr)
 knitr::opts_chunk$set(echo = TRUE, warning = F)
 ```
 
-## Prelude about "effects"
+### Prelude about "effects"
 This short document is about marginal _effects_. While the word effect implies causal thinking, it is important to note that marginal effects are calculated from regression models and their causal interpretation has the same limitations as a causal interpretation of regression coefficients. This means that to believe somewhat in a causal interpretation of marginal effects, we must have insured that the usual suspects like confounding, selection, and loss to follow up were controlled in design and/or analysis (preferably in the study design!). One particular unfortunate thing is that R packages for marginal effects return by default the marginal effects for all variables in a regression, even though control of bias can typically not be achieved simultaneously for all exposures of interest.
 
 _Therefore, any analysis that calculates marginal effects should first insure causal identification for the exposures of interest, even if this step is not covered in this document. Further, only marginal effects for the focal exposure need should be calculated._
@@ -201,16 +201,16 @@ To estimate these more complex effects we are coming back to the life expectancy
 ```{r, fig.width=8}
 N = 500
 LE_data = data.frame(
-  Edu = rnorm(N,mean = 13, sd = 1),
+  Edu = rnorm(N,mean = 13, sd = 1.5),
   GenderWoman = (runif(N) > runif(N))*1)
 LE_data$LifeExpect = 
   with(LE_data,
-       65 
-       + 2.25  * Edu 
-       - 0.07 * Edu^2 
-       + 3.5    * GenderWoman 
-       - .225  * (GenderWoman*Edu) 
-       + rnorm(N,sd = 1))
+       60 
+       + 2.75  * Edu 
+       - 0.08 * Edu^2 
+       + 7    * GenderWoman 
+       - .375  * (GenderWoman*Edu) 
+       + rnorm(N,sd = 3))
 
 LE_data$GenderWoman = factor(LE_data$GenderWoman)
 
@@ -243,8 +243,9 @@ lmfit = lm(LifeExpect ~  Edu + I(Edu^2) + GenderWoman + GenderWoman*Edu, LE_data
 ame = margins(lmfit)
 summary(ame)
 par(mfrow = c(1,2))
-cplot(lmfit,"Edu")
-cplot(lmfit,"GenderWoman")
+ylim = quantile(LE_data$LifeExpect,c(.125,.875))
+cplot(lmfit,"Edu", ylim = ylim)
+cplot(lmfit,"GenderWoman", ylim = ylim)
 ```
 
 The effect for education looks unexpected. Given the interaction terms in the model, we should look at the marginal effects split by gender. To do this, we just use a subset of the data for the `margins` function:
@@ -265,7 +266,7 @@ This tells us that on average, one more year of education is associated with a `
 cplot(lmfit,"Edu",
       data = LE_data[LE_data$GenderWoman == 1,],
       col = "red", se.fill = adjustcolor("red",alpha = .25),
-      ylim = quantile(LE_data$LifeExpect,c(.1,.8)))
+      ylim = quantile(LE_data$LifeExpect,c(.025,.95)))
 cplot(lmfit,"Edu", data = LE_data[LE_data$GenderWoman == 0,], draw = "add")
 ```
 
