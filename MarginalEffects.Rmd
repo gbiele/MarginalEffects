@@ -2,7 +2,9 @@
 title: "Marginal effects"
 author: "Guido Biele"
 date: "23 Mai 2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -48,26 +50,29 @@ logit_ADHD = with(
   my_data,
   - 4.5 
   - 1    * GenderGirl
-  +  .5  * Birthmonth 
+  +  .75 * Birthmonth 
   -  .25 * MaternalEdu 
   +  .3  * parity 
-  + 1    * PaternalAgez)
+  + 1    * PaternalAgez
+  -  .1  * PaternalAgez^2)
 
 my_data$GenderGirl = factor(my_data$GenderGirl)
 my_data$ADHD = inv.logit(logit_ADHD) > runif(N)
 
-logreg_fit = glm(ADHD ~ GenderGirl + Birthmonth + PaternalAgez + MaternalEdu + parity,
+logreg_fit = glm(ADHD ~ GenderGirl + Birthmonth 
+                      + PaternalAgez + I(PaternalAgez^2) 
+                      + MaternalEdu + parity,
                  family = binomial,
                  data = my_data)
 
 summary(logreg_fit)
 ```
 
-Now we have simulated data and calculated a logistic regression. We can see that the coefficient for `GenderGirl1` is `r round(coef(logreg_fit)["GenderGirl1"],digits = 3)`. Because this is a logistic regression, this is the log of the odds ratio, so by doing `exp(coef(logreg_fit)["GenderGirl1"])` we can calculate the odds ratio, which is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 3)`. What does this mean? We can say correctly that this is the ratio of the odds to get a diagnosis when one is a girl to the odds to get a diagnosis if one is not a girl:
+Now we have simulated data and calculated a logistic regression. We can see that the coefficient for `GenderGirl1` is `r round(coef(logreg_fit)["GenderGirl1"],digits = 2)`. Because this is a logistic regression, this is the log of the odds ratio, so by doing `exp(coef(logreg_fit)["GenderGirl1"])` we can calculate the odds ratio, which is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)`. What does this mean? We can say correctly that this is the ratio of the odds to get a diagnosis when one is a girl to the odds to get a diagnosis if one is not a girl:
 
 $\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$.
 
-In itself this number is not very elucidating, but when the prevalence of our outcome is low (< 5%) the odds ration approximates the risk ratio. So we could say the risk that a girls gets an ADHD diagnosis is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 3)` times that of boys. Now we approaching the territory of intuitively understandable numbers. Still, one can argue the a simple risk difference is even more understandable, which leads to to average marginal effects.
+In itself this number is not very elucidating, but when the prevalence of our outcome is low (< 5%) the odds ration approximates the risk ratio. So we could say the risk that a girls gets an ADHD diagnosis is `r round(exp(coef(logreg_fit)["GenderGirl1"]),digits = 2)` times that of boys. Now we approaching the territory of intuitively understandable numbers. Still, one can argue the a simple risk difference is even more understandable, which leads to to average marginal effects.
 
 Lets start by simply calculating the observed and predicted probability of ADHD:
 
@@ -112,7 +117,7 @@ tbl = data.frame(
       average_marginal_effect = average_marginal_effect),
     digits = 3))
 colnames(tbl) = c("Value")
-kable(tbl,digits = 2)
+kable(tbl,digits = 3)
 ```
 
 With these numbers in hand, we can make a table with the different effect size measures for a logistic regression:
@@ -135,7 +140,7 @@ AME = c("Average marginal effect (Risk difference)",
 
 tbl = rbind(OR,RR,AME)
 colnames(tbl) = c("Name","Equation","Value")
-kable(tbl, digits = 2)
+kable(tbl, digits = 3)
 ```
 
 Note that the deviation between OR and RR is expected here, because the prevalence of the outcome is above 5%.
@@ -167,8 +172,17 @@ Marginal effects are most intuitive, if we see them on the same scale on which t
 
 ```{r, results="hide"}
 tmp = cplot(logreg_fit,"GenderGirl")
-tmp = cplot(logreg_fit,"PaternalAgez")
+tmp = cplot(logreg_fit,"PaternalAgez",
+            data = my_data[my_data$PaternalAgez < 3.1 &
+                           my_data$PaternalAgez > -3,])
 ```
+
+On these plots 
+
+* the predictor variables is on the x-axis
+* the expected value of the outcome variable is on the y-axis
+* vertical lines and shadings indicate the confidence intervals
+* the "rug" on the bottom visualizes the frewuency of the different predictor-variable values in the data set.
 
 ### Marginal effects for models with nonlinear and interaction terms
 To estimate these more complex effects we are coming back to the life expectancy example. First we simulate some data with nonlinear and interaction effects and estimate a linear regression:
@@ -228,13 +242,15 @@ tbl = rbind(summary(ame_women),
             summary(ame_men))
 tbl = cbind(data.frame(group = c("women","women","men","men")),
             tbl)
-kable(tbl, digits = 2)
+kable(tbl, digits = 3)
 ```
 
 This tells us that on average, one more year of education is associated with a `52*tbl$AME[1]` = `r round(52*tbl$AME[1], digits = 2)` weeks longer life expectancy for women and a `r round(52*tbl$AME[3], digits = 2)` life expectancy for men. We can also visualize this by plotting the expected life expectancy for men and women:
 
 ```{r, results="hide"}
-cplot(lmfit,"Edu", data = LE_data[LE_data$GenderWoman == 1,], col = "red",
+cplot(lmfit,"Edu",
+      data = LE_data[LE_data$GenderWoman == 1,],
+      col = "red", se.fill = adjustcolor("red",alpha = .25),
       ylim = quantile(LE_data$LifeExpect,c(.1,.8)))
 cplot(lmfit,"Edu", data = LE_data[LE_data$GenderWoman == 0,], draw = "add")
 ```
