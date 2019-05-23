@@ -1,27 +1,23 @@
-tmp = cplot(logreg_fit,"PaternalAgez",
-            data = my_data[my_data$PaternalAgez < 3.1 &
-                             my_data$PaternalAgez > -3,])
-for (k in seq(2,22,length = 8)) {
-  x = tmp$xvals[k]
-  y = tmp$yvals[k]
+tmp = cplot(logreg_fit,"PaternalAgez")
+
+
+
+  my_data_0 = my_data_1 = my_data
   
-  delta = .01
-  
-  my_data_a = my_data_b = my_data
-  
-  my_data_a$PaternalAgez = x-delta
-  my_data_b$PaternalAgez = x+delta
+  my_data_0$PaternalAgez = my_data_0$PaternalAgez - setstep(my_data_0$PaternalAgez)
+  my_data_1$PaternalAgez = my_data_0$PaternalAgez + setstep(my_data_0$PaternalAgez)
   
   slope = 
-    mean(predict(logreg_fit, newdata = my_data_b) 
-         - predict(logreg_fit, newdata = my_data_a))
+    (  predict(logreg_fit, newdata = my_data_0, type= "response") 
+     - predict(logreg_fit, newdata = my_data_1, type = "response")) / 
+    (my_data_0$PaternalAgez - my_data_1$PaternalAgez)
   
   
-  xx = c(min(tmp$xvals),
+  xx = c(x-1,
          x,
-         max(tmp$xvals))
-  yy = c(y - slope*diff(xx[1:2]),
+         x+1)
+  yy = c(y - slp/2,
          y,
-         y + slope*diff(xx[2:3]))
+         y +slp/2)
   lines(xx,yy,col = "red")  
-}
+  points(x,y)
