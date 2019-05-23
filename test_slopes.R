@@ -1,27 +1,31 @@
-tmp = cplot(logreg_fit,"PaternalAgez",
-            data = my_data[my_data$PaternalAgez < 3.1 &
-                             my_data$PaternalAgez > -3,])
-for (k in seq(2,22,length = 8)) {
-  x = tmp$xvals[k]
-  y = tmp$yvals[k]
-  
-  delta = .01
-  
-  my_data_a = my_data_b = my_data
-  
-  my_data_a$PaternalAgez = x-delta
-  my_data_b$PaternalAgez = x+delta
-  
-  slope = 
-    mean(predict(logreg_fit, newdata = my_data_b) 
-         - predict(logreg_fit, newdata = my_data_a))
-  
-  
-  xx = c(min(tmp$xvals),
+tmp = cplot(logreg_fit,"PaternalAgez")
+
+my_data_0 = my_data_1 = my_data
+
+my_data_0$PaternalAgez = my_data_0$PaternalAgez - setstep(my_data_0$PaternalAgez)
+my_data_1$PaternalAgez = my_data_0$PaternalAgez + setstep(my_data_0$PaternalAgez)
+
+estimates = predict(logreg_fit,type = "response")
+
+slope = 
+  (  predict(logreg_fit, newdata = my_data_0, type= "response") 
+     - predict(logreg_fit, newdata = my_data_1, type = "response")) / 
+  (my_data_0$PaternalAgez - my_data_1$PaternalAgez)
+
+
+for (x in seq(min(my_data$PaternalAgez),max(my_data$PaternalAgez),length = 10)) {
+  idx = my_data$PaternalAgez > (x-1) & my_data$PaternalAgez < (x+1)
+  y = mean(estimates[idx])
+  slp =mean(slope[idx])/2
+  xx = c(x-1,
          x,
-         max(tmp$xvals))
-  yy = c(y - slope*diff(xx[1:2]),
+         x+1)
+  yy = c(y - slp,
          y,
-         y + slope*diff(xx[2:3]))
+         y +slp)
   lines(xx,yy,col = "red")  
+  points(x,y)
+  
 }
+
+  
