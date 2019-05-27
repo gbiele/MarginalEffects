@@ -257,6 +257,28 @@ cplot(logreg_fit,"PaternalAgez",
                        my_data$PaternalAgez > -3,])
 ```
 
+It is important to note that these predicted values are conditional on the mean or mode values of the other covariates. In particular, the data matrix is generated with following code:
+
+```{r}
+xvar = "PaternalAgez"
+xvals = prediction::seq_range(my_data[[xvar]], n = 25)
+tmpdat = lapply(
+  my_data[, names(my_data) != xvar, drop = FALSE],
+  prediction::mean_or_mode)
+
+tmpdat = structure(
+  lapply(
+    tmpdat,
+    rep,
+    length.out = length(xvals)),
+  class = "data.frame",
+  row.names = seq_len(length(xvals)))
+
+tmpdat
+```
+
+As we see, the value was set to the mode for the categorical variables, which is not neccessarily what one wants. This should definitively be taken into account when interpreting such a figure.
+
 We can also use the `cplot` function to show how different ways to analyse the variable parity leads to (slightly) different results:
 
 ```{r, results="hide"}
@@ -286,6 +308,17 @@ The `margins`package uses base R to make plots. If one wants to make plots in gg
 If the previous plot somehow looks like a dose-response curve, this is because it is a dose-response curve. A useful "theoretical" implication of this is that one way to explain average marginal effects is that it is the weighted average slope of the dose-response curve, where the weights are proportional to the number of people in the sample with a certain dose.
 
 A useful practical implication is that one can use the `cplot` functions from the `margins`package to visualize dose-response curves, even if one is not interested in average marginal effects.
+
+Luckily, the `margins`packges also allows us to directly see the slope at different levesl of the expsore. We just need to specify `what = "effect"` in the cplot function. Lets try this for the variable BirthMonth:
+
+```{r, fig.height=8, results = "hide"}
+par(mfrow = c(2,1))
+cplot(logreg_fit,"Birthmonth", what = "prediction",
+      main = "prediction (dose response)")
+cplot(logreg_fit,"Birthmonth", what = "effect",
+      main = "effect (slope) at different exposures")
+```
+
 
 ### Marginal effects for models with nonlinear and interaction terms
 To estimate these more complex effects we are coming back to the life expectancy example. First we simulate some data with nonlinear and interaction effects and estimate a linear regression:
