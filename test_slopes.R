@@ -27,5 +27,3 @@ for (x in seq(min(my_data$PaternalAgez),max(my_data$PaternalAgez),length = 10)) 
   points(x,y)
   
 }
-
-  
