@@ -140,7 +140,7 @@ With these numbers in hand, we can make a table with the different effect size m
 OR.tex = "$$\\frac{p(ADHD \\vert girl)/(1-p(ADHD \\vert girl))}{p(ADHD|boy)/(1-p(ADHD \\vert boy))}$$"
 OR.tex = "$$\\frac{p(ADHD \\vert girl)/(1-p(ADHD \\vert girl))}{p(ADHD \\vert boy)/(1-p(ADHD \\vert boy))}$$"
 RR.tex = "$$\\frac{p(ADHD \\vert girl)}{p(ADHD \\vert boy)}$$"
-AME.tex = "$$\\large p(ADHD \\vert girl)-p(ADHD \\vert boy)$$"
+AME.tex = "$$p(ADHD \\vert girl)-p(ADHD \\vert boy)$$"
 OR = c("Odds Ratio",
        OR.tex,
        as.character(round(exp(coef(logreg_fit)["GenderGirl1"]),
@@ -150,7 +150,7 @@ RR = c("Risk Ratio",
        as.character(round(mean(predicted_probability_girl1)/
                             mean(predicted_probability_girl0),
                           digits = 3)))
-AME = c("Average marginal effect (Risk difference)",
+AME = c("Average marginal effect (risk difference)",
         AME.tex,
         as.character(round(mean(predicted_probability_girl1-
                                   predicted_probability_girl0),
@@ -158,7 +158,7 @@ AME = c("Average marginal effect (Risk difference)",
 
 tbl = rbind(OR,RR,AME)
 colnames(tbl) = c("Name","Equation","Value")
-kable(tbl, digits = 3,escape = FALSE)
+kable(tbl, digits = 3,escape = FALSE, row.names = F)
 ```
 
 Note that the deviation between OR and RR is expected here, because the prevalence of the outcome is above 5%.
