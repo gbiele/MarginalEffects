@@ -137,24 +137,28 @@ kable(tbl,digits = 3)
 With these numbers in hand, we can make a table with the different effect size measures for a logistic regression:
 
 ```{r, echo = F}
+OR.tex = "$$\\frac{p(ADHD \\vert girl)/(1-p(ADHD \\vert girl))}{p(ADHD|boy)/(1-p(ADHD \\vert boy))}$$"
+OR.tex = "$$\\frac{p(ADHD \\vert girl)/(1-p(ADHD \\vert girl))}{p(ADHD \\vert boy)/(1-p(ADHD \\vert boy))}$$"
+RR.tex = "$$\\frac{p(ADHD \\vert girl)}{p(ADHD \\vert boy)}$$"
+AME.tex = "$$\\large p(ADHD \\vert girl)-p(ADHD \\vert boy)$$"
 OR = c("Odds Ratio",
-       "$$\\large\\frac{p(ADHD|girl)/(1-p(ADHD|girl))}{p(ADHD|boy)/(1-p(ADHD|boy))}$$",
+       OR.tex,
        as.character(round(exp(coef(logreg_fit)["GenderGirl1"]),
                           digits = 3)))
 RR = c("Risk Ratio",
-       "$$\\large\\frac{p(ADHD|girl)}{p(ADHD|boy)}$$",
-       as.character(round(mean(predicted_probability_girl1/
-                                 predicted_probability_girl0),
+       RR.tex,
+       as.character(round(mean(predicted_probability_girl1)/
+                            mean(predicted_probability_girl0),
                           digits = 3)))
 AME = c("Average marginal effect (Risk difference)",
-        "$$\\large p(ADHD|girl)-p(ADHD|boy)$$",
+        AME.tex,
         as.character(round(mean(predicted_probability_girl1-
                                   predicted_probability_girl0),
                            digits = 3)))
 
 tbl = rbind(OR,RR,AME)
 colnames(tbl) = c("Name","Equation","Value")
-kable(tbl, digits = 3)
+kable(tbl, digits = 3,escape = FALSE)
 ```
 
 Note that the deviation between OR and RR is expected here, because the prevalence of the outcome is above 5%.
@@ -164,9 +168,10 @@ Note that the deviation between OR and RR is expected here, because the prevalen
 The example above was nice to explain how marginal effects can be calculated, and how they relate to other effect size measures. However, it is a bit cumbersome to calculate marginal effects manually (and we haven't calculated any confidence intervals). R packages for calculating marginal effects include
 
 * [margins](https://cran.r-project.org/web/packages/margins/)  
-* [ggeffects](https://cran.r-project.org/web/packages/ggeffects/index.html)
+* [marginaleffects](https://vincentarelbundock.github.io/marginaleffects/)
 
-The `margins` package implements functionalities to calculate marginal effects in R, and can calculate marginal effects for example for `glm`, `glmer`, `betareg`, and `polr` models (for more info execute `?margins` in the R-Console). The `ggefects` package supports a wider range of models, but as of writing this, I am not sure if it calculates average marginal effects as they are traditionally defined. So I won't cover it for now.
+
+The `margins` package implements functionalities to calculate marginal effects in R, and can calculate marginal effects for example for `glm`, `glmer`, `betareg`, and `polr` models (for more info execute `?margins` in the R-Console). The `marginaleffects` package supports a wider range of models.
 
 ### The margins package
 #### Calculating marginal effects with this package is easy
